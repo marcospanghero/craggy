@@ -22,7 +22,8 @@ set(SOURCES
         CraggyClient
         CraggyCrypto
         CraggyOS
-        CraggyTypes)
+        CraggyTypes
+        CraggyTimeUtils)
 
 if (UNIX)
     set(SOURCES ${SOURCES} crypto/CraggyCrypto-Linux.c)
@@ -62,7 +63,7 @@ endif()
 if (CRAGGY_WITH_OPENSSL_BINDINGS)
     find_package(OpenSSL REQUIRED)
     include_directories(${OPENSSL_INCLUDE_DIR})
-    set(SOURCES ${SOURCES} crypto/CraggyCrypto-OpenSSL CraggyTypes.h CraggyOS.h)
+    set(SOURCES ${SOURCES} crypto/CraggyCrypto-OpenSSL)
 endif()
 
 add_library(craggy STATIC ${SOURCES})

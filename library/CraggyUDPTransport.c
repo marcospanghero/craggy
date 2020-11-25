@@ -29,7 +29,7 @@
 #include "CraggyClient.h"
 #include "CraggyOS.h"
 
-#define ERROR_OCCURRED(x) *result = x; goto error;
+#define ERROR_OCCURRED(x) { *result = x; goto error; }
 
 bool craggy_createSocket(int *outSocket, const char *address, CraggyResult *result) {
 
@@ -91,7 +91,7 @@ exit:
     return *result == CraggyResultSuccess;
 }
 
-bool craggy_makeRequest(const char *address, const craggy_rough_time_request_t requestBuf, CraggyResult *result, craggy_rough_time_response_t *responseBuf, size_t *responseBufLen) {
+bool craggy_makeRequest(const char *address, const craggy_rough_time_request_t requestBuf, CraggyResult *result, craggy_rough_time_response_t responseBuf, size_t *responseBufLen) {
 
     *result = CraggyResultGeneralError;
 
@@ -110,7 +110,7 @@ bool craggy_makeRequest(const char *address, const craggy_rough_time_request_t r
         r = send(fd, requestBuf, sizeof(craggy_rough_time_request_t), 0 /* flags */);
     } while (r == -1 && errno == EINTR);
 
-    if (r < 0 || r != sizeof(craggy_rough_time_request_t)) {
+    if (r != sizeof(craggy_rough_time_request_t)) {
         ERROR_OCCURRED(CraggyResultNetworkInternalError);
     }
 
@@ -126,7 +126,7 @@ bool craggy_makeRequest(const char *address, const craggy_rough_time_request_t r
         ERROR_OCCURRED(CraggyResultNetworkInternalError);
     }
 
-    *responseBufLen = bufLen;
+    *responseBufLen = (size_t)bufLen;
     *result = CraggyResultSuccess;
     goto exit;
 

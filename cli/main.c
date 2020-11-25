@@ -19,6 +19,7 @@
 #include <inttypes.h>
 #include <getopt.h>
 #include <assert.h>
+#include <CraggyTimeUtils.h>
 
 #include "base64.h"
 #include "CraggyTransport.h"
@@ -50,7 +51,7 @@ int main(int argc, char *argv[]) {
 
     static struct option long_options[] = {
             {"host",    required_argument, 0,             'h'},
-            {"key",    required_argument, 0,             'k'},
+            {"key",     required_argument, 0,             'k'},
             {"nonce",   optional_argument, 0,             'n'},
             {0, 0,                         0,             0}
     };
@@ -88,7 +89,7 @@ int main(int argc, char *argv[]) {
 
             case 'n':
                 nonce = malloc(strlen(optarg)+1);
-                nonce = strcpy(hostname, optarg);
+                nonce = strcpy(nonce, optarg);
                 break;
 
             case 'k':
@@ -126,7 +127,6 @@ int main(int argc, char *argv[]) {
     memset(requestBuf, 0, sizeof(craggy_rough_time_request_t));
 
     craggy_rough_time_nonce_t nonceBytes;
-    memset(nonceBytes, 1, CRAGGY_ROUGH_TIME_NONCE_LENGTH);
 
     if (nonce != NULL)
     {
@@ -154,15 +154,20 @@ int main(int argc, char *argv[]) {
         craggy_rough_time_t timestamp;
         uint32_t radius;
 
-        size_t responseBufLen = CRAGGY_ROUGH_TIME_MIN_REQUEST_SIZE *3;
-        craggy_rough_time_response_t responseBuf[responseBufLen];
+        size_t responseBufLen = 0;
+        craggy_rough_time_response_t responseBuf;
 
         if (craggy_makeRequest(hostname, requestBuf, &craggyResult, responseBuf, &responseBufLen)) {
 
-            if (!craggy_processResponse(nonceBytes, rootPublicKey, responseBuf, responseBufLen, &craggyResult, &timestamp, &radius)) {
+            craggy_roughtime_result roughtimeResult;
+
+            if (!craggy_processResponse(nonceBytes, rootPublicKey, responseBuf, responseBufLen, &craggyResult, &roughtimeResult)) {
                 printf("Error parsing response: %d", craggyResult);
                 goto error;
             }
+
+            uint64_t outTime;
+            craggy_roughtimeToEpoc(&roughtimeResult,&outTime);
 
             const uint64_t end_us = MonotonicUs();
             const uint64_t end_realtime_us = RealtimeUs();
@@ -178,6 +183,7 @@ int main(int argc, char *argv[]) {
             static const int64_t kTenMinutes = 10 * 60 * 1000000;
 
             if (imaxabs(system_offset) > kTenMinutes) {
+                printf("Seems system time is off by more than 10 minutes");
                 goto error;
             }
         }
