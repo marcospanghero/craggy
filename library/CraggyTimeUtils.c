@@ -38,7 +38,7 @@ CraggyResult craggy_roughtimeToEpoc(craggy_roughtime_result *roughtimeResult, ui
    will have more or fewer than the nominal 86,400,000,000 microseconds.
  */
     *outTime = ((roughtimeResult->time >> (uint64_t )40) - NUMBER_OF_JULIAN_DAYS_UNTIL_EPOCH) * NUMBER_OF_SECONDS_IN_A_DAY;
-    *outTime += (((roughtimeResult->time << (uint64_t )24) >> (uint64_t )24))/NUMBER_OF_MICROSECONDS_IN_SECOND;
+    *outTime += (((roughtimeResult->time << (uint64_t )24) >> (uint64_t )24)+(serverRoundTripUs/2))/NUMBER_OF_MICROSECONDS_IN_SECOND;
 
     return CraggyResultSuccess;
 }

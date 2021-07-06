@@ -49,7 +49,13 @@ if (CMAKE_VERSION VERSION_LESS 2.8.11)
 endif()
 
 # Now simply link against gtest or gtest_main as needed. Eg
-add_executable(craggy-test TestCrypto.cpp)
+add_executable(craggy-test TestCrypto.cpp TestTimeUtils.cpp)
+
+include(GoogleTest)
+
+gtest_discover_tests(craggy-test)
+
+
 target_link_libraries(craggy-test craggy)
 target_link_libraries(craggy-test gtest_main)
 

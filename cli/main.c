@@ -83,18 +83,15 @@ int main(int argc, char *argv[]) {
                 break;
 
             case 'h':
-                hostname = malloc(strlen(optarg)+1);
-                hostname = strcpy(hostname, optarg);
+                hostname = strdup(optarg);
                 break;
 
             case 'n':
-                nonce = malloc(strlen(optarg)+1);
-                nonce = strcpy(nonce, optarg);
+                nonce = strdup(optarg);
                 break;
 
             case 'k':
-                publicKey = malloc(strlen(optarg)+1);
-                publicKey = strcpy(publicKey, optarg);
+                publicKey = strdup(optarg);
                 break;
 
             case '?':
@@ -115,7 +112,6 @@ int main(int argc, char *argv[]) {
     craggy_rough_time_public_key_t rootPublicKey;
     size_t base64DecodedRootPublicKeyLen = 0;
     unsigned char *base64DecodedRootPublicKey = base64_decode((const unsigned char *) publicKey, strlen(publicKey), &base64DecodedRootPublicKeyLen);
-
     if (base64DecodedRootPublicKeyLen != CRAGGY_ROUGH_TIME_PUBLIC_KEY_LENGTH) {
         printf("Public key length must be %d byte(s) (got %zu after base64 decoding)", CRAGGY_ROUGH_TIME_PUBLIC_KEY_LENGTH, base64DecodedRootPublicKeyLen);
         goto error;

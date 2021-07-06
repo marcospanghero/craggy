@@ -16,14 +16,11 @@
 project(craggy C)
 
 set(SOURCES
-        CraggyProtocol
-        CraggyProtocol
-        CraggyClient
-        CraggyClient
-        CraggyCrypto
-        CraggyOS
-        CraggyTypes
-        CraggyTimeUtils)
+        CraggyProtocol.c
+        CraggyProtocol.c
+        CraggyClient.c
+        CraggyClient.c
+        CraggyTimeUtils.c)
 
 if (UNIX)
     set(SOURCES ${SOURCES} crypto/CraggyCrypto-Linux.c)

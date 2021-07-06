@@ -16,6 +16,10 @@
 #ifndef CRAGGY_CRAGGYCLIENT_H
 #define CRAGGY_CRAGGYCLIENT_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -42,7 +46,8 @@ bool craggy_createRequest(craggy_rough_time_nonce_t nonce, craggy_rough_time_req
  * @param radius Radius reported by the server
  * @return True if the request creation was successful, otherwise false and {@link result} will signal the error
  */
-bool craggy_processResponse(craggy_rough_time_nonce_t nonce, craggy_rough_time_public_key_t rootPublicKey, craggy_rough_time_response_t responseBuf, size_t responseBufLen, CraggyResult *result, craggy_roughtime_result *roughtimeResult);
+bool craggy_processResponse(craggy_rough_time_nonce_t nonce, craggy_rough_time_public_key_t rootPublicKey, craggy_rough_time_response_t responseBuf, size_t responseBufLen, CraggyResult *result,
+                            craggy_roughtime_result *roughtimeResult);
 
 /** Generates a new nonce value, placing it in the nonce specified.
  *
@@ -51,5 +56,9 @@ bool craggy_processResponse(craggy_rough_time_nonce_t nonce, craggy_rough_time_p
  * @return True if successful, otherwise false and {@link result} will indicate the error
  */
 bool craggy_generateNonce(CraggyResult *result, craggy_rough_time_nonce_t nonce);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif //CRAGGY_CRAGGYCLIENT_H

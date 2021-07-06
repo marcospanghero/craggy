@@ -16,9 +16,16 @@
 #ifndef CRAGGY_CRAGGYTIMEUTILS_H
 #define CRAGGY_CRAGGYTIMEUTILS_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "CraggyTypes.h"
 
-
 CraggyResult craggy_roughtimeToEpoc(craggy_roughtime_result *roughtimeResult, uint64_t serverRoundTripUs, uint64_t *outTime);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif //CRAGGY_CRAGGYTIMEUTILS_H

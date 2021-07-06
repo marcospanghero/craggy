@@ -14,12 +14,16 @@
  * limitations under the License.
  */
 
+#ifndef CRAGGY_PROTOCOL_H
+#define CRAGGY_PROTOCOL_H
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdbool.h>
-
-#ifndef CRAGGY_PROTOCOL_H
-#define CRAGGY_PROTOCOL_H
 
 #include "CraggyTypes.h"
 
@@ -76,8 +80,7 @@ static const uint64_t CRAGGY_ROUGHTIME_HEADER = 0x4d49544847554f52;
 #define CRAGGY_TAG_MAXT MAKE_TAG("MAXT")
 #define CRAGGY_TAG_DELE MAKE_TAG("DELE")
 
-typedef enum
-{
+typedef enum {
     CraggyProtocolResultSuccess = 0,
     CraggyProtocolResultTooManyTags,
     CraggyProtocolResultTagsNotInOrder,
@@ -195,4 +198,8 @@ bool craggy_finish(CraggyRoughtimeMessageBuilder *builder, size_t *outLen);
  */
 void craggy_destroyMessageBuilder(CraggyRoughtimeMessageBuilder *builder);
 
+#ifdef __cplusplus
+}
 #endif
+
+#endif // CRAGGY_PROTOCOL_H
