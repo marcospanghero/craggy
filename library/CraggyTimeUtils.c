@@ -16,9 +16,10 @@
 #include "CraggyTimeUtils.h"
 
 #define NUMBER_OF_JULIAN_DAYS_UNTIL_EPOCH 40587
-#define NUMBER_OF_SECONDS_IN_A_DAY (60 * 60 * 24)
+#define NUMBER_OF_MICROSECONDS_IN_SECOND 1000000
+#define NUMBER_OF_SECONDS_IN_A_DAY (60 * 60 * 24) // 86400 seconds / 24 hrs
 
-CraggyResult craggy_roughtimeToEpoc(craggy_roughtime_result *roughtimeResult, uint64_t *outTime) {
+CraggyResult craggy_roughtimeToEpoc(craggy_roughtime_result *roughtimeResult, uint64_t serverRoundTripUs, uint64_t *outTime) {
 /*
  5.1.5.  Timestamp
 
@@ -36,11 +37,8 @@ CraggyResult craggy_roughtimeToEpoc(craggy_roughtime_result *roughtimeResult, ui
    number of bits in the fractional part and that days with leap seconds
    will have more or fewer than the nominal 86,400,000,000 microseconds.
  */
-    uint64_t numOfDaysSinceJulian = (roughtimeResult->time >> (uint64_t )40);
-    uint64_t usSinceMidnight = ((roughtimeResult->time << (uint64_t )24) >> (uint64_t )24);
+    *outTime = ((roughtimeResult->time >> (uint64_t )40) - NUMBER_OF_JULIAN_DAYS_UNTIL_EPOCH) * NUMBER_OF_SECONDS_IN_A_DAY;
+    *outTime += (((roughtimeResult->time << (uint64_t )24) >> (uint64_t )24))/NUMBER_OF_MICROSECONDS_IN_SECOND;
 
-    uint64_t daysSinceEpoch = numOfDaysSinceJulian - NUMBER_OF_JULIAN_DAYS_UNTIL_EPOCH;
-    uint64_t secondsSinceEpoc = daysSinceEpoch * NUMBER_OF_SECONDS_IN_A_DAY;
-
-
+    return CraggyResultSuccess;
 }

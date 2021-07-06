@@ -19,6 +19,6 @@
 #include "CraggyTypes.h"
 
 
-CraggyResult craggy_roughtimeToEpoc(craggy_roughtime_result *roughtimeResult, uint64_t *outTime);
+CraggyResult craggy_roughtimeToEpoc(craggy_roughtime_result *roughtimeResult, uint64_t serverRoundTripUs, uint64_t *outTime);
 
 #endif //CRAGGY_CRAGGYTIMEUTILS_H

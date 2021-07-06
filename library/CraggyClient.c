@@ -268,7 +268,7 @@ bool craggy_processResponse(craggy_rough_time_nonce_t nonce, craggy_rough_time_p
     craggy_memcpy(&maxTime, nestedData, sizeof(craggy_rough_time_t));
 
     if (midPoint < minTime || midPoint > maxTime) {
-        // ERROR_OCCURRED(CraggyResultAuthenticationPublicKeyUsageOutOfBounds)
+        ERROR_OCCURRED(CraggyResultAuthenticationPublicKeyUsageOutOfBounds)
     }
 
     /** 5. Return the midpoint and radius. */

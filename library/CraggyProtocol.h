@@ -59,7 +59,6 @@ typedef uint32_t craggy_tag_t;
     )
 
 static const uint64_t CRAGGY_ROUGHTIME_HEADER = 0x4d49544847554f52;
-// #define CRAGGY_ROUGHTIME_HEADER 0x4d49544847554f52;
 
 #define CRAGGY_TAG_PAD MAKE_TAG("PAD\0")
 #define CRAGGY_TAG_VER MAKE_TAG("VER\0")

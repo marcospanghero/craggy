@@ -4,7 +4,5 @@
     <mapping directory="$PROJECT_DIR$" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/build/library/craggy-orlp-ed25519-src" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/build/test/googletest-src" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/cmake-build-debug/library/craggy-orlp-ed25519-src" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/cmake-build-debug/test/googletest-src" vcs="Git" />
   </component>
 </project>

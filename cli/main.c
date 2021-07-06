@@ -151,13 +151,14 @@ int main(int argc, char *argv[]) {
     {
         const uint64_t start_us = MonotonicUs();
 
-        craggy_rough_time_t timestamp;
-        uint32_t radius;
-
         size_t responseBufLen = 0;
         craggy_rough_time_response_t responseBuf;
 
         if (craggy_makeRequest(hostname, requestBuf, &craggyResult, responseBuf, &responseBufLen)) {
+
+            const uint64_t end_us = MonotonicUs();
+            const uint64_t roundtripElapsedTimeUs = (end_us - start_us) / 2;
+            const uint64_t endRealtimeUs = RealtimeUs();
 
             craggy_roughtime_result roughtimeResult;
 
@@ -167,22 +168,18 @@ int main(int argc, char *argv[]) {
             }
 
             uint64_t outTime;
-            craggy_roughtimeToEpoc(&roughtimeResult,&outTime);
-
-            const uint64_t end_us = MonotonicUs();
-            const uint64_t end_realtime_us = RealtimeUs();
+            craggy_roughtimeToEpoc(&roughtimeResult,roundtripElapsedTimeUs, &outTime);
 
             // We assume that the path to the Roughtime server is symmetric and thus add
             // half the round-trip time to the server's timestamp to produce our estimate
             // of the current time.
-            timestamp += (end_us - start_us) / 2;
             printf("Received reply in %" PRIu64 "μs.\n", end_us - start_us);
-            printf("Current time is %" PRIu64 "μs from the epoch, ±%uμs \n", timestamp, radius);
-            int64_t system_offset = timestamp - end_realtime_us;
-            printf("System clock differs from that estimate by %" PRId64 "μs.\n", system_offset);
+            printf("Current time is %" PRIu64 "μs from the epoch, ±%uμs \n", (outTime*1000000), roughtimeResult.radius);
+            int64_t systemOffsetUs = (outTime*1000000) - endRealtimeUs;
+            printf("System clock differs from that estimate by %" PRId64 "μs. (%d seconds)\n", systemOffsetUs, (systemOffsetUs/1000000));
             static const int64_t kTenMinutes = 10 * 60 * 1000000;
 
-            if (imaxabs(system_offset) > kTenMinutes) {
+            if (imaxabs(systemOffsetUs) > kTenMinutes) {
                 printf("Seems system time is off by more than 10 minutes");
                 goto error;
             }
