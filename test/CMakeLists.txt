@@ -55,12 +55,11 @@ include(GoogleTest)
 
 gtest_discover_tests(craggy-test)
 
-
 target_link_libraries(craggy-test craggy)
 target_link_libraries(craggy-test gtest_main)
 
 # add_test(NAME example_test COMMAND craggy-test)
-# include (CTest)
+include (CTest)
 
 # find_program( MEMORYCHECK_COMMAND valgrind )
 # set( MEMORYCHECK_COMMAND_OPTIONS "--trace-children=yes --leak-check=full --tool=memcheck --leak-check=yes --show-reachable=yes --num-callers=20" )

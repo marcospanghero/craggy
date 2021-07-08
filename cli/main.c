@@ -172,7 +172,7 @@ int main(int argc, char *argv[]) {
             printf("Received reply in %" PRIu64 "μs.\n", end_us - start_us);
             printf("Current time is %" PRIu64 "μs from the epoch, ±%uμs \n", (outTime*1000000), roughtimeResult.radius);
             int64_t systemOffsetUs = (outTime*1000000) - endRealtimeUs;
-            printf("System clock differs from that estimate by %" PRId64 "μs. (%d seconds)\n", systemOffsetUs, (systemOffsetUs/1000000));
+            printf("System clock differs from that estimate by %" PRId64 "μs. (%d seconds)\n", systemOffsetUs, (int32_t)(systemOffsetUs/1000000));
             static const int64_t kTenMinutes = 10 * 60 * 1000000;
 
             if (imaxabs(systemOffsetUs) > kTenMinutes) {
