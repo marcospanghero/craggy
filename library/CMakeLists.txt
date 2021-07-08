@@ -27,7 +27,7 @@ if (UNIX)
 endif()
 
 if (CRAGGY_WITH_UDP_TRANSPORT)
-    set(SOURCES ${SOURCES} CraggyUDPTransport)
+    set(SOURCES ${SOURCES} CraggyUDPTransport.c)
 endif ()
 
 if (CRAGGY_WITH_ORLP_ED25519_BINDINGS)
@@ -53,14 +53,14 @@ if (CRAGGY_WITH_ORLP_ED25519_BINDINGS)
                      ${CMAKE_CURRENT_BINARY_DIR}/craggy-orlp-ed25519-build
             EXCLUDE_FROM_ALL)
 
-    set(SOURCES ${SOURCES} crypto/CraggyCrypto-ORLP-ED25519)
+    set(SOURCES ${SOURCES} crypto/CraggyCrypto-ORLP-ED25519.c)
 
 endif()
 
 if (CRAGGY_WITH_OPENSSL_BINDINGS)
     find_package(OpenSSL REQUIRED)
     include_directories(${OPENSSL_INCLUDE_DIR})
-    set(SOURCES ${SOURCES} crypto/CraggyCrypto-OpenSSL)
+    set(SOURCES ${SOURCES} crypto/CraggyCrypto-OpenSSL.c)
 endif()
 
 add_library(craggy STATIC ${SOURCES})
