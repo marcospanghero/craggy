@@ -17,7 +17,7 @@ project(craggy-test)
 set(CMAKE_CXX_STANDARD 11)
 
 # Download and unpack googletest at configure time
-configure_file(../gtest/CMakeLists.txt.in googletest-download/CMakeLists.txt)
+configure_file(gtest/CMakeLists.txt.in googletest-download/CMakeLists.txt)
 execute_process(COMMAND ${CMAKE_COMMAND} -G "${CMAKE_GENERATOR}" .
         RESULT_VARIABLE result
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/googletest-download )
