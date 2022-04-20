@@ -24,8 +24,5 @@ option(CRAGGY_WITH_ORLP_ED25519_BINDINGS "Use ORLPs ED25519 cryptographic operat
 
 add_subdirectory(library)
 
-enable_testing()
-add_subdirectory(test)
-
 add_subdirectory(cli)
 
