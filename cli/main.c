@@ -27,24 +27,24 @@
 #include "CraggyClient.h"
 
 // TimeUs returns the current value of the specified clock in microseconds.
-static uint64_t TimeUs(clockid_t clock)
+static uint32_t TimeUs(clockid_t clock)
 {
     struct timespec tv;
     if (clock_gettime(clock, &tv))
     {
         abort();
     }
-    uint64_t ret = tv.tv_sec;
+    uint32_t ret = tv.tv_sec;
     ret *= 1000000;
     ret += tv.tv_nsec / 1000;
     return ret;
 }
 
 // MonotonicUs returns the value of the monotonic clock in microseconds.
-uint64_t MonotonicUs() { return TimeUs(CLOCK_MONOTONIC); }
+uint32_t MonotonicUs() { return TimeUs(CLOCK_MONOTONIC); }
 
 // MonotonicUs returns the value of the realtime clock in microseconds.
-uint64_t RealtimeUs() { return TimeUs(CLOCK_REALTIME); }
+uint32_t RealtimeUs() { return TimeUs(CLOCK_REALTIME); }
 
 int main(int argc, char *argv[])
 {
@@ -179,7 +179,7 @@ int main(int argc, char *argv[])
         {
 
             printf("--------------- START ---------------\n");
-            const uint64_t start_us = MonotonicUs();
+            const uint32_t start_us = MonotonicUs();
 
             craggy_rough_time_t timestamp;
             uint32_t radius;
@@ -196,8 +196,8 @@ int main(int argc, char *argv[])
                     goto error;
                 }
 
-                const uint64_t end_us = MonotonicUs();
-                const uint64_t end_realtime_us = RealtimeUs();
+                const uint32_t end_us = MonotonicUs();
+                const uint32_t end_realtime_us = RealtimeUs();
 
                 // We assume that the path to the Roughtime server is symmetric and thus add
                 // half the round-trip time to the server's timestamp to produce our estimate
