@@ -86,6 +86,8 @@ typedef struct
     bool external;
     bool raw_set;
     bool skyview_set;
+    
+    volatile bool tp_lock;
 
 
 } simulator_t;

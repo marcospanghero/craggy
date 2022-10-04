@@ -2787,6 +2787,7 @@ struct gps_data_t {
     struct gps_log_t    log;    // log data
 
     int leap_seconds;           /* Unix secs to UTC (GPS-UTC offset) */
+    int rollovers;
     /* precision of fix -- valid if satellites_used > 0 */
     int satellites_used;        /* Number of satellites used in solution */
     struct dop_t dop;

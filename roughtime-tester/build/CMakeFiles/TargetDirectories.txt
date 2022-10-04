@@ -1,0 +1,3 @@
+/media/marco/cvsoc/craggy/roughtime-tester/build/CMakeFiles/rebuild_cache.dir
+/media/marco/cvsoc/craggy/roughtime-tester/build/CMakeFiles/craggy-cli.dir
+/media/marco/cvsoc/craggy/roughtime-tester/build/CMakeFiles/edit_cache.dir

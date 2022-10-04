@@ -1,0 +1,1 @@
+/usr/bin/cc   -rdynamic CMakeFiles/craggy-cli.dir/base64.o CMakeFiles/craggy-cli.dir/main.o  -o craggy-cli -lcraggy 

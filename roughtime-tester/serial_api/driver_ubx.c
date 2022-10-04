@@ -875,8 +875,7 @@ ubx_msg_nav_timegps(struct gps_device_t *session, unsigned char *buf,
     if ((valid & UBX_TIMEGPS_VALID_LEAP_SECOND) ==
         UBX_TIMEGPS_VALID_LEAP_SECOND)
     {
-        // session->context->leap_seconds = (int)getub(buf, 10);
-        // session->context->valid |= LEAP_SECOND_VALID;
+        session->gpsdata.leap_seconds = (int)getub(buf, 10);
     }
     // Valid GPS time of week and week number
 #define VALID_TIME (UBX_TIMEGPS_VALID_TIME | UBX_TIMEGPS_VALID_WEEK)
@@ -894,7 +893,7 @@ ubx_msg_nav_timegps(struct gps_device_t *session, unsigned char *buf,
         session->gpsdata.fix.gps_time_itow = ts_tow.tv_sec;
         session->gpsdata.fix.gps_time_ftow = ts_tow.tv_nsec;
         session->gpsdata.fix.gps_time_weekn = week;
-        // session->gpsdata.fix.time = gpsd_gpstime_resolv(session, week, ts_tow);
+        session->gpsdata.fix.time = gpsd_gpstime_resolv(session, week, ts_tow);
 
         tAcc = (double)getleu32(buf, 12); // tAcc in ns
         session->gpsdata.fix.ept = tAcc * 1e-9;
@@ -1189,43 +1188,7 @@ gps_mask_t ubx_msg_rxm_measx(struct gps_device_t *session,
                              const unsigned char *buf,
                              size_t data_len)
 {
-    gps_mask_t mask = 0;
-    unsigned int numMeas;
-    int i;
-
-    if (16 > data_len)
-    {
-        return 0;
-    }
-
-    numMeas = (unsigned int)getub(buf, 34);
-    session->gpsdata.raw.avb_meas = numMeas;
-    uint32_t towMS = getleu32(buf, 4);
-    timespec_t ts_tow;
-    MSTOTS(&ts_tow, towMS);
-    session->gpsdata.raw.mtime = ts_tow;
-    // zero out the structure as in the rawx case to make sure we see which ones changed
-    log_trace("Got MEASX %d ", numMeas);
-    if (numMeas > MAXCHANNELS)
-    {
-        return 0;
-    }
-
-    for (i = 0; i < numMeas; i++)
-    {
-        int off = 24 * i;
-        short svId = (short)getub(buf, off + 45);
-        log_trace("Sat SV: %d ", svId);
-        /* code phase */
-        session->gpsdata.raw.meas[svId].codephase = ((double)getleu32((const char *)buf, off + 60)) * 4.76837158e-7;
-        session->gpsdata.skyview[svId].codephase = ((double)getleu32((const char *)buf, off + 60)) * 4.76837158e-7;
-        session->gpsdata.raw.meas[svId].wholeChips = (getleu16((const char *)buf, off + 52));
-        session->gpsdata.raw.meas[svId].fracChips = (getleu16((const char *)buf, off + 58));
-        session->gpsdata.raw.meas[svId].doppler = ((double)getleu32((const char *)buf, off + 52)) * 0.2;
-        log_trace("MESX SVID: %d CF: %f ", svId, session->gpsdata.raw.meas[svId].codephase);
-    }
-
-    return MEASX_SET;
+    return 0;
 }
 
 /*
@@ -1238,228 +1201,7 @@ gps_mask_t ubx_msg_rxm_rawx(struct gps_device_t *session,
                             const unsigned char *buf,
                             size_t data_len)
 {
-    double rcvTow;
-    uint16_t week;
-    int8_t leapS;
-    uint8_t numMeas;
-    uint8_t recStat;
-    uint8_t version;
-    int i;
-    const char *obs_code;
-    timespec_t ts_tow;
-
-    if (16 > data_len)
-    {
-        return 0;
-    }
-
-    /* Note: this is "approximately" GPS TOW, this is not iTOW */
-    rcvTow = getled64((const char *)buf, 0); /* time of week in seconds */
-    week = getleu16(buf, 8);
-    leapS = getsb(buf, 10);
-    numMeas = getub(buf, 11);
-
-    // Save the number of measurements we have
-    session->gpsdata.raw.avb_meas = numMeas;
-    // printf("NMeas: %d", numMeas);
-    recStat = getub(buf, 12);
-    /* byte 13 is version on u-blox 9, reserved on u-blox 8
-     * how is that supposed to work?? */
-    // version = getub(buf, 13);
-
-    /* convert GPS weeks and "approximately" GPS TOW to UTC */
-    DTOTS(&ts_tow, rcvTow);
-    // Do not set gpsdata.fix.time.  set gpsdata.raw.mtime
-    // session->gpsdata.raw.mtime = gpsd_gpstime_resolv(session, week, ts_tow);
-
-    /* zero the measurement data */
-    /* so we can tell which meas never got set */
-    if (numMeas > MAXCHANNELS)
-    {
-        return 0;
-    }
-    for (i = 0; i < numMeas; i++)
-    {
-        int off = 32 * i;
-        /* pseudorange in meters */
-        double prMes = (double)getled64((const char *)buf, off + 16);
-        /* carrier phase in cycles */
-        double cpMes = (double)getled64((const char *)buf, off + 24);
-        /* doppler in Hz, positive towards sat */
-        double doMes = (double) getlef32((const char *)buf, off + 32);
-        uint8_t gnssId = getub(buf, off + 36);
-        short svId = (short)getub(buf, off + 37);
-        // printf("SVID %d\n", svId);
-        //  reserved in u-blox 8, sigId in u-blox 9 (version 1)
-        uint8_t sigId = getub(buf, off + 38);
-        /* GLONASS frequency slot */
-        uint8_t freqId = getub(buf, off + 39);
-        /* carrier phase locktime in ms, max 64500ms */
-        uint16_t locktime = getleu16(buf, off + 40);
-        /* carrier-to-noise density ratio dB-Hz */
-        uint8_t cno = getub(buf, off + 42);
-        uint8_t prStdev = getub(buf, off + 43) & 0x0f;
-        uint8_t cpStdev = getub(buf, off + 44) & 0x0f;
-        uint8_t doStdev = getub(buf, off + 45) & 0x0f;
-        /* tracking stat
-         * bit 0 - prMes valid
-         * bit 1 - cpMes valid
-         * bit 2 - halfCycle valid
-         * bit 3 - halfCycle subtracted from phase
-         */
-        uint8_t trkStat = 0x03;
-        session->gpsdata.raw.meas[svId].gnssid = gnssId;
-        session->gpsdata.raw.meas[svId].sigid = sigId;
-
-        /* some of these are GUESSES as the u-blox codes do not
-         * match RINEX codes */
-        switch (gnssId)
-        {
-        case 0: /* GPS */
-            switch (sigId)
-            {
-            default:
-                /* let PPP figure it out */
-            case 0: /* L1C/A */
-                obs_code = "L1C";
-                break;
-            case 3: /* L2 CL */
-                obs_code = "L2C";
-                break;
-            case 4: /* L2 CM */
-                obs_code = "L2X";
-                break;
-            }
-            break;
-        case 1: /* SBAS */
-            /* sigId added on protVer 27, and SBAS gone in protVer 27
-             * so must be L1C/A */
-            svId -= 100; /* adjust for RINEX 3 svid */
-
-            obs_code = "L1C"; /* u-blox calls this L1C/A */
-            /* SBAS can do L5I, but the code? */
-            switch (sigId)
-            {
-            default:
-                /* let PPP figure it out */
-                break;
-            case 0: /* L1C/A */
-                obs_code = "L1C";
-                break;
-            }
-            break;
-        case 2: /* GALILEO */
-            switch (sigId)
-            {
-            default:
-                /* let PPP figure it out */
-            case 0:               /*  */
-                obs_code = "L1C"; /* u-blox calls this E1OS or E1C */
-                break;
-            case 1:               /*  */
-                obs_code = "L1B"; /* u-blox calls this E1B */
-                break;
-            case 5:               /*  */
-                obs_code = "L7I"; /* u-blox calls this E5bl */
-                break;
-            case 6:               /*  */
-                obs_code = "L7Q"; /* u-blox calls this E5bQ */
-                break;
-            }
-            break;
-        case 3: /* BeiDou */
-            switch (sigId)
-            {
-            default:
-                /* let PPP figure it out */
-            case 0:               /*  */
-                obs_code = "L2Q"; /* u-blox calls this B1I D1 */
-                break;
-            case 1:               /*  */
-                obs_code = "L2I"; /* u-blox calls this B1I D2 */
-                break;
-            case 2:               /*  */
-                obs_code = "L7Q"; /* u-blox calls this B2I D1 */
-                break;
-            case 3:               /*  */
-                obs_code = "L7I"; /* u-blox calls this B2I D2 */
-                break;
-            }
-            break;
-        default:           /* huh? */
-        case 4:            /* IMES.  really? */
-            obs_code = ""; /* u-blox calls this L1 */
-            break;
-        case 5: /* QZSS */
-            switch (sigId)
-            {
-            default:
-                /* let PPP figure it out */
-            case 0:               /*  */
-                obs_code = "L1C"; /* u-blox calls this L1C/A */
-                break;
-            case 4:               /*  */
-                obs_code = "L2S"; /* u-blox calls this L2CM */
-                break;
-            case 5:               /*  */
-                obs_code = "L2L"; /* u-blox calls this L2CL*/
-                break;
-            }
-            break;
-        case 6: /* GLONASS */
-            switch (sigId)
-            {
-            default:
-                /* let PPP figure it out */
-            case 0:               /*  */
-                obs_code = "L1C"; /* u-blox calls this L1OF */
-                break;
-            case 2:               /*  */
-                obs_code = "L2C"; /* u-blox calls this L2OF */
-                break;
-            }
-            break;
-        }
-        (void)strlcpy(session->gpsdata.raw.meas[i].obs_code, obs_code,
-                      sizeof(session->gpsdata.raw.meas[i].obs_code));
-
-        session->gpsdata.raw.meas[svId].svid = svId;
-        session->gpsdata.raw.meas[svId].freqid = freqId;
-        session->gpsdata.raw.meas[svId].snr = cno;
-        session->gpsdata.raw.meas[svId].satstat = trkStat;
-        if (trkStat & 1)
-        {
-            /* prMes valid */
-            session->gpsdata.raw.meas[svId].pseudorange = prMes;
-            session->gpsdata.skyview[svId].pseudorange = prMes;
-        }
-        else
-        {
-            session->gpsdata.raw.meas[svId].pseudorange = 0;
-            session->gpsdata.skyview[svId].pseudorange = 0;
-        }
-        if ((trkStat & 2))
-        {
-            /* cpMes valid, RTKLIB uses 5 < cpStdev */
-            session->gpsdata.raw.meas[svId].carrierphase = cpMes;
-            session->gpsdata.skyview[svId].carrierphase = cpMes;
-        }
-        else
-        {
-            session->gpsdata.raw.meas[svId].carrierphase = 0;
-            session->gpsdata.skyview[svId].carrierphase = 0;
-        }
-        session->gpsdata.raw.meas[svId].doppler = doMes;
-        session->gpsdata.raw.meas[svId].deltarange = 0;
-        session->gpsdata.raw.meas[svId].locktime = locktime;
-        if (0 == locktime)
-        {
-            /* possible slip */
-            session->gpsdata.raw.meas[svId].lli = 2;
-        }
-    }
-
-    return RAW_SET;
+    return 0;
 }
 
 /*
@@ -1606,7 +1348,7 @@ ubx_msg_tim_tp(struct gps_device_t *session, unsigned char *buf,
     uint8_t refInfo;
     timespec_t ts_tow;
 
-    //reliable cycle - empty all data
+    // reliable cycle - empty all data
     memset(&session->gpsdata.skyview, '\0', sizeof(&session->gpsdata.skyview));
     memset(&session->gpsdata.raw, '\0', sizeof(&session->gpsdata.raw));
     session->gpsdata.satellites_visible = 0;
@@ -1630,9 +1372,9 @@ ubx_msg_tim_tp(struct gps_device_t *session, unsigned char *buf,
     {
 
         // leap already added!?!?
-        // int saved_leap = session->context->leap_seconds;
+        int saved_leap = session->context->leap_seconds;
         // remove it!
-        // session->context->leap_seconds = 0;
+        session->context->leap_seconds = 0;
 
         /* good, save qErr and qErr_time */
         MSTOTS(&ts_tow, towMS);
@@ -1702,8 +1444,8 @@ gps_mask_t ubx_parse(struct gps_device_t *session, unsigned char *buf,
         log_debug("UBX-NAV-RESETODO");
         break;
     case UBX_NAV_SAT:
-        log_info("UBX-NAV-SAT");
-        mask = ubx_msg_nav_sat(session, &buf[UBX_PREFIX_LEN], data_len);
+        log_debug("UBX-NAV-SAT");
+       //mask = ubx_msg_nav_sat(session, &buf[UBX_PREFIX_LEN], data_len);
         break;
     case UBX_NAV_SBAS:
         log_debug("UBX-NAV-SBAS");
@@ -1752,7 +1494,7 @@ gps_mask_t ubx_parse(struct gps_device_t *session, unsigned char *buf,
         log_debug("UBX-NAV-TIMEQZSS");
         break;
     case UBX_NAV_TIMEUTC:
-        mask = ubx_msg_nav_timeutc(session, &buf[UBX_PREFIX_LEN], data_len);
+        //mask = ubx_msg_nav_timeutc(session, &buf[UBX_PREFIX_LEN], data_len);
         break;
     case UBX_RXM_ALM:
         log_debug("UBX-RXM-ALM");
@@ -1761,20 +1503,20 @@ gps_mask_t ubx_parse(struct gps_device_t *session, unsigned char *buf,
         log_debug("UBX-RXM-EPH");
         break;
     case UBX_RXM_MEASX:
-        log_info("UBX-RXM-MEASX");
-        mask = ubx_msg_rxm_measx(session, &buf[UBX_PREFIX_LEN], data_len);
+        log_debug("UBX-RXM-MEASX");
+        //mask = ubx_msg_rxm_measx(session, &buf[UBX_PREFIX_LEN], data_len);
         break;
     case UBX_RXM_RAWX:
-        log_info("UBX-RXM-RAWX");
-        mask = ubx_msg_rxm_rawx(session, &buf[UBX_PREFIX_LEN], data_len);
+        log_debug("UBX-RXM-RAWX");
+        //mask = ubx_msg_rxm_rawx(session, &buf[UBX_PREFIX_LEN], data_len);
         break;
     case UBX_RXM_SFRB:
-        log_info("UBX-RXM-SFRB");
-        mask = ubx_msg_rxm_sfrb(session, &buf[UBX_PREFIX_LEN], data_len);
+        log_debug("UBX-RXM-SFRB");
+        //mask = ubx_msg_rxm_sfrb(session, &buf[UBX_PREFIX_LEN], data_len);
         break;
     case UBX_RXM_SFRBX:
-        log_info("UBX-RXM-SFRBX");
-        mask = ubx_msg_rxm_sfrbx(session, &buf[UBX_PREFIX_LEN], data_len);
+        log_debug("UBX-RXM-SFRBX");
+        //mask = ubx_msg_rxm_sfrbx(session, &buf[UBX_PREFIX_LEN], data_len);
         break;
     case UBX_TIM_DOSC:
         log_debug("UBX-TIM-DOSC");
@@ -1786,13 +1528,12 @@ gps_mask_t ubx_parse(struct gps_device_t *session, unsigned char *buf,
         log_debug("UBX-TIM-TM");
         break;
     case UBX_TIM_TP:
-        log_info("UBX-TIM-TP");
+        log_debug("UBX-TIM-TP");
         mask = ubx_msg_tim_tp(session, &buf[UBX_PREFIX_LEN], data_len);
         break;
     case UBX_TIM_TOS:
         log_debug("UBX-TIM-TOS");
         break;
-
 
     default:
         log_debug("No clue what happened - unkn packet");

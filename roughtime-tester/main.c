@@ -17,46 +17,42 @@ Requirements: STANDARD POSIX code!! no wierd linux magic, no wierd mcu stuff.
 #include <assert.h>
 #include <signal.h>
 
+#include <pthread.h>
+
 #include <unistd.h>
 #include <fcntl.h>
 
-#include "timepps.h"
-#include "rtklib.h"
 #include "base64.h"
 #include "CraggyTransport.h"
 #include "CraggyClient.h"
 
-#include "../serial_api/serial.h"
-#include "../gps-sim.h"
-#include "../gps-core.h"
+#include "serial_api/serial.h"
+#include "others/log.h"
+#include "gps-sim.h"
+#include "gps-core.h"
 
 int run = 1;
 
 simulator_t simulator;
 
-int thread_to_core(int core_id)
+static u_int64_t TimeUs(clockid_t clock)
 {
-    int num_cores = sysconf(_SC_NPROCESSORS_ONLN);
-    if (core_id < 0 || core_id >= num_cores)
-        return EINVAL;
-
-    cpu_set_t cpuset;
-    CPU_ZERO(&cpuset);
-    CPU_SET(core_id, &cpuset);
-
-    pthread_t current_thread = pthread_self();
-    return pthread_setaffinity_np(current_thread, sizeof(cpu_set_t), &cpuset);
+    struct timespec tv;
+    if (clock_gettime(clock, &tv))
+    {
+        abort();
+    }
+    u_int64_t ret = tv.tv_sec;
+    ret *= 1000000;
+    ret += tv.tv_nsec / 1000;
+    return ret;
 }
 
-/* Set trhead name if supported. */
-void set_thread_name(const char *name)
-{
-#if (__GLIBC__ > 2) || (__GLIBC__ == 2 && __GLIBC_MINOR__ >= 12)
-    pthread_setname_np(pthread_self(), name);
-#else
-    NOTUSED(name);
-#endif
-}
+// MonotonicUs returns the value of the monotonic clock in microseconds.
+u_int64_t MonotonicUs() { return TimeUs(CLOCK_MONOTONIC); }
+
+// MonotonicUs returns the value of the realtime clock in microseconds.
+u_int64_t RealtimeUs() { return TimeUs(CLOCK_REALTIME); }
 
 static void simulator_init(void)
 {
@@ -118,10 +114,6 @@ int main(int argc, char *argv[])
     char byte;
     int avb = 0;
 
-    raw_t gnss_raw;
-    int ret;
-    serial_port_t serial_port;
-
     while (1)
     {
 
@@ -160,7 +152,7 @@ int main(int argc, char *argv[])
             break;
 
         case 'p':
-            strcpy(simulator.port_name, optarg);
+            gpsPort = strcpy(simulator.port_name, optarg);
             break;
 
         case 'i':
@@ -243,50 +235,53 @@ int main(int argc, char *argv[])
 
     while (repeats > 0)
     {
-        if (craggy_createRequest(nonceBytes, requestBuf))
+        if (simulator.tp_lock)
         {
 
-            printf("--------------- START ---------------\n");
-            craggy_rough_time_t timestamp;
-            uint32_t radius;
-
-            size_t responseBufLen = CRAGGY_ROUGH_TIME_MIN_REQUEST_SIZE * 3;
-            craggy_rough_time_response_t responseBuf[responseBufLen];
-
-            const uint64_t start_us = MonotonicUs();
-            if (craggy_makeRequest(hostname, requestBuf, &craggyResult, responseBuf, &responseBufLen))
+            if (craggy_createRequest(nonceBytes, requestBuf))
             {
 
-                if (!craggy_processResponse(nonceBytes, rootPublicKey, responseBuf, responseBufLen, &craggyResult, &timestamp, &radius))
+                log_info("--------------- START ---------------");
+                craggy_rough_time_t timestamp;
+                uint32_t radius;
+                const uint32_t start_us = MonotonicUs();
+
+                size_t responseBufLen = CRAGGY_ROUGH_TIME_MIN_REQUEST_SIZE * 3;
+                craggy_rough_time_response_t responseBuf[responseBufLen];
+
+                if (craggy_makeRequest(hostname, requestBuf, &craggyResult, responseBuf, &responseBufLen))
                 {
-                    printf("Error parsing response: %d", craggyResult);
+
+                    if (!craggy_processResponse(nonceBytes, rootPublicKey, responseBuf, responseBufLen, &craggyResult, &timestamp, &radius))
+                    {
+                        printf("Error parsing response: %d", craggyResult);
+                        goto error;
+                    }
+
+                    // We assume that the path to the Roughtime server is symmetric and thus add
+                    // half the round-trip time to the server's timestamp to produce our estimate
+                    // of the current time.
+                    const uint32_t end_us = MonotonicUs();
+                    const uint32_t end_realtime_us = RealtimeUs();
+                    timestamp += (end_us - start_us) / 2;
+
+                    log_info("Craggy Timestamp: %ld", timestamp);
+                    log_info("GPSTimestamp: %lf", (simulator.gpsdata.gpsdata.fix.time.tv_sec + simulator.gpsdata.gpsdata.fix.time.tv_nsec * 1e-9) * 1e6);
+                    log_info("RAD[%lf] \t Time Delta: %lf", radius/1e6, (timestamp - (simulator.gpsdata.gpsdata.fix.time.tv_sec + simulator.gpsdata.gpsdata.fix.time.tv_nsec * 1e-9) * 1e6) / 1e6);
+                }
+                else
+                {
+                    log_error("Error making request: %d", craggyResult);
                     goto error;
                 }
-
-                // We assume that the path to the Roughtime server is symmetric and thus add
-                // half the round-trip time to the server's timestamp to produce our estimate
-                // of the current time.
-
-                // FIX to use gps time
-                const uint64_t end_us = MonotonicUs();
-                timestamp += (end_us - start_us) / 2 - (start_us - gnss_raw.pvt.timestamp_arrival);
-                printf("Current time is %" PRIu64 "μs from the epoch, ±%uμs \n", timestamp, radius);
-                int64_t system_offset = (timestamp + 18e6) - (gnss_raw.time.time + gnss_raw.time.sec) * 1e6;
-                printf("GPS clock differs from that estimate by %" PRId64 "μs.\n", system_offset);
+                log_info("--------------- STOP ---------------");
             }
-            else
-            {
-                printf("Error making request: %d", craggyResult);
-                goto error;
-            }
-            printf("\nGPS Time: %.15f\n", gnss_raw.time.time + gnss_raw.time.sec);
-            printf("--------------- STOP ---------------\n");
+            repeats--;
+            simulator.tp_lock = false;
         }
-        repeats--;
     }
 
-    printf("Terminating.... \n");
-    serial_port_close(&serial_port);
+    log_warn("Terminating.... ");
 
     goto exit;
 error:
@@ -295,5 +290,6 @@ error:
 exit:
     free(hostname);
     free(publicKey);
+    simulator.gps_serial_thread_exit = true;
     return 0;
 }

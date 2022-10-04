@@ -8,13 +8,13 @@
  *       void *gps_serial_thread_ep(void *arg)
  *
  * NOTES :
- *       This function handles the serial port thread. 
+ *       This function handles the serial port thread.
  *       This handles the data incoming from a reference receiver
  *       Requires UBLOX receiver (M8T, F9P or above)
- *       Requires NAV-PVT, RXM-MEASX, RXM-RAWX, TIM-TP messages     
+ *       Requires NAV-PVT, RXM-MEASX, RXM-RAWX, TIM-TP messages
  *       Copyright A.N.Other Co. 1990, 1995.  All rights reserved.
  *
- * AUTHOR :    Marco Spanghero       
+ * AUTHOR :    Marco Spanghero
  *
  * CHANGES :
  *       Fixed data buffers behavior. Now reset all every time we get messages
@@ -48,22 +48,22 @@
 #include "../others/log.h"
 
 /*
-* Define how many full cycles we want to wait untill we are pretty sure the GPS data we have is decent
-*/
+ * Define how many full cycles we want to wait untill we are pretty sure the GPS data we have is decent
+ */
 
 #define BACKOFF 6
 /*
-* Which serial port to connect to
-* TODO: move this to a config file so we don't have to recompile all the time
-*/
+ * Which serial port to connect to
+ * TODO: move this to a config file so we don't have to recompile all the time
+ */
 serial_port_t serial_port;
 
 uint8_t ret = 0;
 
 /*
-* Holds all the svIDs (It is not used actually)
-* TODO: remove
-*/
+ * Holds all the svIDs (It is not used actually)
+ * TODO: remove
+ */
 uint8_t svIDs[MAX_CHAN];
 
 /*!
@@ -89,8 +89,7 @@ void *gps_serial_thread_ep(void *arg)
 {
     log_set_level(LOG_INFO);
     bool run = true;
-    thread_to_core(2);
-    
+
     // Main simulator object
     simulator_t *simulator = (simulator_t *)(arg);
 
@@ -98,15 +97,15 @@ void *gps_serial_thread_ep(void *arg)
      * Open serial port -> configs are in the serial port driver
      * TODO: move into configuration file externally or at least in the header file
      * Possibly we should get these from the main thread object, by creating the serial object there
-     *  */ 
+     *  */
     ret = serial_port_init_port(simulator->port_name, &serial_port);
     ret = serial_port_open_port(&serial_port);
 
-/*!
- * Bunch of different params used for reading packets
- * avb: data we get avb at the serial port
- * multi_fragment_offset: position in the frame for packets that are made of multiple fragments
- */
+    /*!
+     * Bunch of different params used for reading packets
+     * avb: data we get avb at the serial port
+     * multi_fragment_offset: position in the frame for packets that are made of multiple fragments
+     */
     size_t avb = 0;
     size_t multi_fragment_offset = 0;
     size_t packet_len = 0;
@@ -158,12 +157,13 @@ void *gps_serial_thread_ep(void *arg)
             pthread_cond_signal(&(simulator->gps_serial_init_done));
             log_info("Started gps loop");
         }
+        clock_gettime(CLOCK_REALTIME, &rx_time_start);
         ioctl(serial_port.port_descriptor, FIONREAD, &avb);
         if (avb > 0)
-        {            // print_hex(rx_buf, ret);
+        { // print_hex(rx_buf, ret);
+            ret = read(serial_port.port_descriptor, &rx_buf, avb);
             if (rx_buf[0] == 0xb5 && rx_buf[1] == 0x62)
             {
-                rx_time = rx_time_start;
                 expected_len = rx_buf[4] | rx_buf[5] << 8;
                 log_trace("RX Fragment %d %02x%02x EXP Len: %ld Read time: [%ld.%ld]", ret, rx_buf[0], rx_buf[1], expected_len, rx_time_delta.tv_sec, rx_time_delta.tv_nsec);
 
@@ -178,19 +178,27 @@ void *gps_serial_thread_ep(void *arg)
             packet_len += ret;
             memcpy(&msg_buf[multi_fragment_offset], &rx_buf, ret);
             memset(rx_buf, 0, 1024);
-
+            clock_gettime(CLOCK_REALTIME, &rx_time_stop);
+            timespec_sub(&rx_time_delta, &rx_time_stop, &rx_time_start);
+            timespec_add(&rx_time_total, &rx_time_total, &rx_time_delta);
             if (packet_len == expected_len + 8)
             {
+                clock_gettime(CLOCK_REALTIME, &rx_time_start);
+                mask = 0;
                 log_trace("[%ld.%ld] [%d] MSG FULL Len: %ld %x%x ", rx_time.tv_sec, rx_time.tv_nsec, device.gpsdata.subframe.subframe_num, packet_len, msg_buf[0], msg_buf[1]);
-                timespec_sub(&rx_time, &rx_time, &rx_time_total);
                 mask = ubx_parse(&device, msg_buf, packet_len);
                 memset(msg_buf, 0, 1024);
-                // wait until we have the first raw meas observation and we have a valid lock. After that, we can start sending stuff to the main driver. After we updated the initial skyview, we send out the subframe info (up to 30s)
+                log_debug("[Tvalid: %d ] Mask: %s", simulator->tp_lock, gps_maskdump(mask));
 
-                // What we want to collect from the raw measuremnts is:
-                // - Initial set of satellites
-                // - Initial code offset
-                // - Initial carrier offset
+                clock_gettime(CLOCK_REALTIME, &rx_time_stop);
+                timespec_sub(&rx_time_delta, &rx_time_stop, &rx_time_start);
+                timespec_add(&rx_time_total, &rx_time_total, &rx_time_delta);
+
+                if (GPSTIME_SET == (mask & GPSTIME_SET))
+                {
+                    simulator->tp_lock = true;
+                    log_info("RX Time: %lf", rx_time_total.tv_sec + rx_time_total.tv_nsec * 1e-9);
+                }
 
                 multi_fragment_offset = 0;
                 packet_len = 0;

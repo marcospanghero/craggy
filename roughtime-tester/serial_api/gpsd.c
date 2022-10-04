@@ -74,8 +74,8 @@ timespec_t gpsd_gpstime_resolv(struct gps_device_t *session,
      * work even when Block IIF satellites increase the week counter width
      * to 13 bits.
      */
-    if ((int)week < (session->context->gps_week & 0x3ff)) {
-        ++session->context->rollovers;
+    if ((int)week < (session->gpsdata.fix.gps_time_weekn & 0x3ff)) {
+        ++session->gpsdata.rollovers;
     }
 
     /*
@@ -87,7 +87,7 @@ timespec_t gpsd_gpstime_resolv(struct gps_device_t *session,
      * the protocol reference claims.
      */
     if (1024 > week) {
-        week += session->context->rollovers * 1024;
+        week += session->gpsdata.rollovers * 1024;
     }
 
     /* This used to sanity check week number, GPS epoch, against leap
@@ -100,26 +100,8 @@ timespec_t gpsd_gpstime_resolv(struct gps_device_t *session,
     // gcc needs the (time_t)week to not overflow. clang got it right.
     // if time_t is 32-bits, then still 2038 issues
     t.tv_sec = GPS_EPOCH + ((time_t)week * SECS_PER_WEEK) + tow.tv_sec;
-    t.tv_sec -= session->context->leap_seconds;
+    t.tv_sec -= session->gpsdata.leap_seconds;
     t.tv_nsec = tow.tv_nsec;
-
-#if 4 < SIZEOF_TIME_T
-    // 2038 rollover hack for unsigned 32-bit time, assuming today is < 2038
-    if (0 > t.tv_sec) {
-        // recompute for previous EPOCH
-        week -= 1024;
-        t.tv_sec = GPS_EPOCH + ((time_t)week * SECS_PER_WEEK) + tow.tv_sec;
-        t.tv_sec -= session->context->leap_seconds;
-        GPSD_LOG(LOG_WARN, &session->context->errout,
-                 "2038 rollover. Adjusting to %lld. week %u leap %d\n",
-                 (long long)t.tv_sec, week,
-                 session->context->leap_seconds);
-    }
-#endif   // SIZEOF_TIME_T
-
-    session->context->gps_week = week;
-    session->context->gps_tow = tow;
-    session->context->valid |= GPS_TIME_VALID;
 
     return t;
 }
