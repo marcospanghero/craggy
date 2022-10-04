@@ -30,8 +30,6 @@ set(SOURCES
 
 add_executable(roughtime-tester ${SOURCES})
 
-add_subdirectory(library)
-
 
 target_link_libraries(roughtime-tester craggy)
 target_link_libraries(roughtime-tester m)
