@@ -1,8 +1,10 @@
 file(REMOVE_RECURSE
   "CMakeFiles/craggy-cli.dir/base64.c.o"
+  "CMakeFiles/craggy-cli.dir/base64.c.o.d"
   "CMakeFiles/craggy-cli.dir/main.c.o"
-  "craggy-cli.pdb"
+  "CMakeFiles/craggy-cli.dir/main.c.o.d"
   "craggy-cli"
+  "craggy-cli.pdb"
 )
 
 # Per-language clean rules from dependency scanning.

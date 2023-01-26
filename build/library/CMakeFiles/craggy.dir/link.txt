@@ -1,2 +1,2 @@
-/usr/bin/ar qc libcraggy.a  CMakeFiles/craggy.dir/CraggyProtocol.c.o CMakeFiles/craggy.dir/CraggyClient.c.o CMakeFiles/craggy.dir/crypto/CraggyCrypto-Linux.c.o CMakeFiles/craggy.dir/CraggyUDPTransport.c.o CMakeFiles/craggy.dir/crypto/CraggyCrypto-OpenSSL.c.o
+/usr/bin/ar qc libcraggy.a CMakeFiles/craggy.dir/CraggyProtocol.c.o CMakeFiles/craggy.dir/CraggyClient.c.o "CMakeFiles/craggy.dir/crypto/CraggyCrypto-Linux.c.o" CMakeFiles/craggy.dir/CraggyUDPTransport.c.o "CMakeFiles/craggy.dir/crypto/CraggyCrypto-OpenSSL.c.o"
 /usr/bin/ranlib libcraggy.a
